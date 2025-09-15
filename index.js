@@ -1,4 +1,5 @@
-// index.js — wersja diagnostyczna z odpowiedzią TwiML (1 odpowiedź, zero duplikatów)
+// index.js — wersja z prostymi komendami testowymi (ping, help)
+// Odpowiadamy TwiML-em, więc wychodzi TYLKO jedna wiadomość z webhooka.
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -9,24 +10,34 @@ const app = express();
 // Twilio wysyła webhook jako application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// Prosty healthcheck – sprawdzisz w przeglądarce
+// Healthcheck — po wejściu w URL pokaże, że serwer żyje
 app.get('/', (req, res) => {
   res.send('WhatsApp Nudge Assistant działa 🚀');
 });
 
-// GŁÓWNY WEBHOOK
+// GŁÓWNY WEBHOOK DLA WHATSAPP
 app.post('/webhooks/whatsapp', (req, res) => {
-  const from = req.body.From;        // np. 'whatsapp:+48500040444'
-  const text = req.body.Body || '';  // treść wiadomości
-  console.log('Odebrano:', from, text);
+  const raw = req.body.Body || '';
+  const text = raw.trim().toLowerCase();
+  const from = req.body.From || '';
+  console.log(`[IN] ${from}: ${raw}`);
 
-  // ✅ Odpowiadamy TwiML-em (w treści odpowiedzi HTTP) — to będzie JEDYNA odpowiedź
   const twiml = new twilio.twiml.MessagingResponse();
-  twiml.message(`BOT: dzięki, zapisałem -> "${text}"`);
 
+  // ✅ Szybkie komendy do testów
+  if (text === 'ping') {
+    twiml.message('pong ✅');
+  } else if (text === 'help' || text === 'komendy') {
+    twiml.message('Komendy: ping, help\nPoza tym odpisuję: BOT: dzięki, zapisałem -> "..."');
+  } else {
+    // Domyślna odpowiedź (echo)
+    twiml.message(`BOT: dzięki, zapisałem -> "${raw}"`);
+  }
+
+  // Odpowiadamy TwiML-em — to jest JEDYNA odpowiedź
   res.type('text/xml').send(twiml.toString());
 });
 
-// Port z Railway (lub 8080 lokalnie)
+// Port dostarczany przez Railway (lokalnie 8080)
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`Serwer działa na porcie ${port}`));
