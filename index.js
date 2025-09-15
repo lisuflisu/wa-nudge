@@ -1,30 +1,32 @@
+// index.js — wersja diagnostyczna z odpowiedzią TwiML (1 odpowiedź, zero duplikatów)
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const twilio = require('twilio');
 
 const app = express();
+
+// Twilio wysyła webhook jako application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
 
-const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-const FROM = 'whatsapp:+14155238886'; // numer sandboxa Twilio
-
+// Prosty healthcheck – sprawdzisz w przeglądarce
 app.get('/', (req, res) => {
   res.send('WhatsApp Nudge Assistant działa 🚀');
 });
 
-app.post('/webhooks/whatsapp', async (req, res) => {
-  const from = req.body.From;
-  const text = req.body.Body;
+// GŁÓWNY WEBHOOK
+app.post('/webhooks/whatsapp', (req, res) => {
+  const from = req.body.From;        // np. 'whatsapp:+48500040444'
+  const text = req.body.Body || '';  // treść wiadomości
   console.log('Odebrano:', from, text);
 
-  await client.messages.create({
-    from: FROM,
-    to: from,
-    body: `Dzięki, zapisałem: "${text}"`
-  });
+  // ✅ Odpowiadamy TwiML-em (w treści odpowiedzi HTTP) — to będzie JEDYNA odpowiedź
+  const twiml = new twilio.twiml.MessagingResponse();
+  twiml.message(`BOT: dzięki, zapisałem -> "${text}"`);
 
-  res.sendStatus(200);
+  res.type('text/xml').send(twiml.toString());
 });
 
+// Port z Railway (lub 8080 lokalnie)
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`Serwer działa na porcie ${port}`));
